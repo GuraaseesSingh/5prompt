@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Prompt Arena"
+description = "A friendly practice app for students, teachers, and non-technical learners to improve their AI prompts through guided tasks and concrete coaching feedback."
+version = "1.0.0"
+id = "artifacts/prompt-arena"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20776
+
+[services.development]
+run = "pnpm --filter @workspace/prompt-arena run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/prompt-arena", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/prompt-arena/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20776"
+BASE_PATH = "/"

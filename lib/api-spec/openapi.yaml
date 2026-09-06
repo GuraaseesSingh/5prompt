@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: arena
+    description: Prompt practice operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /task:
+    get:
+      operationId: getTask
+      tags: [arena]
+      summary: Get the next practice task
+      responses:
+        "200":
+          description: A practice task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [arena]
+      summary: List all practice tasks
+      responses:
+        "200":
+          description: Practice task library
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+  /evaluate:
+    post:
+      operationId: evaluatePrompt
+      tags: [arena]
+      summary: Evaluate a submitted prompt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluatePromptInput"
+      responses:
+        "200":
+          description: Prompt feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+        "400":
+          description: Invalid submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [arena]
+      summary: Get current practice progress
+      responses:
+        "200":
+          description: User progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Progress"
+  /checkpoint:
+    post:
+      operationId: getCheckpoint
+      tags: [arena]
+      summary: Get a five-task checkpoint summary
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckpointInput"
+      responses:
+        "200":
+          description: Checkpoint summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkpoint"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +115,100 @@ components:
           type: string
       required:
         - status
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        order:
+          type: number
+        title:
+          type: string
+        brief:
+          type: string
+        conceptFocus:
+          type: string
+          enum: [Role, Task, Context, Constraints, Output Format]
+        category:
+          type: string
+        categoryColor:
+          type: string
+        tip:
+          type: string
+      required: [id, order, title, brief, conceptFocus, category, categoryColor, tip]
+    EvaluatePromptInput:
+      type: object
+      properties:
+        taskId:
+          type: string
+          minLength: 1
+        userPrompt:
+          type: string
+          minLength: 10
+      required: [taskId, userPrompt]
+    Evaluation:
+      type: object
+      properties:
+        score:
+          type: number
+          minimum: 1
+          maximum: 10
+        conceptFocus:
+          type: string
+          enum: [Role, Task, Context, Constraints, Output Format]
+        flaws:
+          type: array
+          items:
+            type: string
+        improvedRewrite:
+          type: string
+        encouragement:
+          type: string
+      required: [score, conceptFocus, flaws, improvedRewrite, encouragement]
+    Progress:
+      type: object
+      properties:
+        completed:
+          type: number
+        total:
+          type: number
+        averageScore:
+          type: number
+        currentConcept:
+          type: string
+          enum: [Role, Task, Context, Constraints, Output Format]
+        streak:
+          type: number
+        scores:
+          type: array
+          items:
+            type: number
+      required: [completed, total, averageScore, currentConcept, streak, scores]
+    CheckpointInput:
+      type: object
+      properties:
+        completed:
+          type: number
+    Checkpoint:
+      type: object
+      properties:
+        completed:
+          type: number
+        averageScore:
+          type: number
+        conceptMastered:
+          type: string
+        recurringWeakness:
+          type: string
+        headline:
+          type: string
+        nextFocus:
+          type: string
+      required: [completed, averageScore, conceptMastered, recurringWeakness, headline, nextFocus]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 
