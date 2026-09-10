@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Prompt Arena"
+title = "5prompt"
 description = "A friendly practice app for students, teachers, and non-technical learners to improve their AI prompts through guided tasks and concrete coaching feedback."
 version = "1.0.0"
 id = "artifacts/prompt-arena"
@@ -12,10 +12,10 @@ paths = [ "/" ]
 localPort = 20776
 
 [services.development]
-run = "pnpm --filter @workspace/prompt-arena run dev"
+run = "pnpm --filter @workspace/5prompt run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/prompt-arena", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/5prompt", "run", "build" ]
 serve = "static"
 publicDir = "artifacts/prompt-arena/dist/public"
 

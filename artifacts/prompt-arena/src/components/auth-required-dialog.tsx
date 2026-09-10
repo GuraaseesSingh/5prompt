@@ -84,7 +84,7 @@ export function WelcomeAuthDialog({ open, onClose }: AuthRequiredDialogProps) {
           <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-accent text-accent-foreground">
             <LockKeyhole size={19} />
           </span>
-          <p className="mt-5 font-mono text-[10px] uppercase tracking-[.15em] text-muted-foreground">Welcome to Prompt Arena</p>
+          <p className="mt-5 font-mono text-[10px] uppercase tracking-[.15em] text-muted-foreground">Welcome to 5prompt</p>
           <h2 id="welcome-auth-title" className="mt-2 font-serif text-3xl tracking-[-.04em]">Save your practice from the start.</h2>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">Create an account to keep your scores across sessions, or continue as a guest and try two free reps first.</p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">

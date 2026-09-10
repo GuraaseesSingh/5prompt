@@ -17,7 +17,7 @@ export default function Welcome() {
         <header className="flex items-center justify-between">
           <Link href="/" data-testid="link-welcome-brand" className="flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-xl bg-primary text-accent"><Sparkles size={18} /></span>
-            <span className="font-bold tracking-[-.03em]">Prompt Arena</span>
+            <span className="font-bold tracking-[-.03em]">5prompt</span>
           </Link>
           <Link href="/" data-testid="link-welcome-skip" className="text-xs font-bold text-muted-foreground transition-colors hover:text-foreground">Skip to practice</Link>
         </header>
@@ -26,7 +26,7 @@ export default function Welcome() {
           <section className="animate-rise-in">
             <PageEyebrow>A small studio for better prompts</PageEyebrow>
             <h1 className="mt-5 max-w-2xl font-serif text-[3.7rem] leading-[.9] tracking-[-.065em] sm:text-7xl lg:text-[6.4rem]">Practice makes <span className="text-muted-foreground/65">clearer.</span></h1>
-            <p className="mt-8 max-w-lg text-base leading-7 text-muted-foreground">Prompt Arena gives you one friendly challenge at a time, then helps you notice what made your words work better.</p>
+            <p className="mt-8 max-w-lg text-base leading-7 text-muted-foreground">5prompt gives you one friendly challenge at a time, then helps you notice what made your words work better.</p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link href="/" data-testid="link-welcome-start" onClick={begin} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3.5 text-sm font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5">Start a practice rep <ArrowRight size={16} /></Link>
               <span className="font-mono text-[10px] uppercase tracking-[.1em] text-muted-foreground">No account needed</span>

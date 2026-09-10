@@ -137,7 +137,7 @@ function ShellBrand({ compact = false }: { compact?: boolean }) {
         <Sparkles size={18} strokeWidth={2.4} />
       </span>
       <span className="leading-none">
-        <span className={`block font-bold tracking-[-.03em] ${compact ? 'text-base' : 'text-[17px]'}`}>Prompt Arena</span>
+        <span className={`block font-bold tracking-[-.03em] ${compact ? 'text-base' : 'text-[17px]'}`}>5prompt</span>
         {!compact && <span className="mt-1 block font-mono text-[9px] uppercase tracking-[.2em] text-sidebar-foreground/45">practice studio</span>}
       </span>
     </Link>
@@ -161,7 +161,7 @@ export function StudioFooter() {
   return (
     <footer className="mx-auto flex max-w-[1040px] items-center justify-between border-t border-border/70 px-5 py-7 text-xs text-muted-foreground sm:px-8">
       <span className="font-serif text-base text-foreground/70">Keep showing up.</span>
-      <span className="font-mono text-[10px] uppercase tracking-[.13em]">Prompt Arena · 2025</span>
+      <span className="font-mono text-[10px] uppercase tracking-[.13em]">5prompt · 2025</span>
     </footer>
   );
 }
