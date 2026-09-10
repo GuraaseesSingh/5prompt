@@ -34,7 +34,10 @@ export interface Task {
 export interface EvaluatePromptInput {
   /** @minLength 1 */
   taskId: string;
-  /** @minLength 10 */
+  /**
+     * @minLength 10
+     * @maxLength 1500
+     */
   userPrompt: string;
 }
 

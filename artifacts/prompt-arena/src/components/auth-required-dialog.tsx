@@ -67,3 +67,37 @@ export function AuthRequiredPanel() {
     </section>
   );
 }
+
+export function WelcomeAuthDialog({ open, onClose }: AuthRequiredDialogProps) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-primary/35 px-5 py-8 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="welcome-auth-title"
+        className="w-full max-w-md overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_80px_hsl(var(--foreground)/.24)] animate-rise-in"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="px-6 py-7 text-center sm:px-8">
+          <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-accent text-accent-foreground">
+            <LockKeyhole size={19} />
+          </span>
+          <p className="mt-5 font-mono text-[10px] uppercase tracking-[.15em] text-muted-foreground">Welcome to Prompt Arena</p>
+          <h2 id="welcome-auth-title" className="mt-2 font-serif text-3xl tracking-[-.04em]">Save your practice from the start.</h2>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">Create an account to keep your scores across sessions, or continue as a guest and try two free reps first.</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <Link href="/sign-in" onClick={onClose} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-xs font-extrabold text-foreground transition-transform hover:-translate-y-0.5">
+              Log in <ArrowRight size={14} />
+            </Link>
+            <Link href="/sign-up" onClick={onClose} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5">
+              Create account <ArrowRight size={14} />
+            </Link>
+          </div>
+          <button type="button" onClick={onClose} className="mt-5 text-xs font-bold text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground">Continue as guest</button>
+        </div>
+      </section>
+    </div>
+  );
+}

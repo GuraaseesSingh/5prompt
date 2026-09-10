@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { getAuth } from "@clerk/express";
+import Groq from "groq-sdk";
 import {
   EvaluatePromptBody,
   EvaluatePromptResponse,
@@ -8,7 +9,9 @@ import {
   GetProgressResponse,
   GetTaskResponse,
   ListTasksResponse,
+  type Evaluation,
 } from "@workspace/api-zod";
+import { logger } from "../lib/logger";
 
 type Concept = "Role" | "Task" | "Context" | "Constraints" | "Output Format";
 
@@ -251,64 +254,97 @@ function currentTask(): Task {
   return tasks[Math.min(attempts.length, tasks.length - 1)];
 }
 
-function hasAny(text: string, words: string[]): boolean {
-  return words.some((word) => text.includes(word));
+// The requested model IDs are no longer available on Groq:
+// openai12000b is not a published model and mixtral-8x7b-32768 is decommissioned.
+const PRIMARY_GROQ_MODEL = "openai/gpt-oss-120b";
+const FALLBACK_GROQ_MODEL = "llama-3.3-70b-versatile";
+
+type GroqEvaluation = {
+  score: number;
+  conceptFocus: Concept;
+  flaws: string[];
+  improved_rewrite: string;
+};
+
+function buildEncouragement(score: number): string {
+  if (score >= 8) return "Strong work — your prompt gives the AI enough direction to do useful work on the first try.";
+  if (score >= 6) return "You’re on the right track. One or two more details will make your request much easier to follow.";
+  return "Good first rep. Prompting is a skill built through small improvements, and you have a clear next step.";
 }
 
-function evaluate(task: Task, userPrompt: string): {
-  score: number;
-  flaws: string[];
-  improvedRewrite: string;
-  encouragement: string;
-} {
-  const prompt = userPrompt.trim();
-  const lower = prompt.toLowerCase();
-  const checks = {
-    role: hasAny(lower, ["you are", "act as", "as a", "expert", "teacher", "editor", "coach"]),
-    task: hasAny(lower, ["explain", "summarize", "write", "create", "compare", "plan", "turn", "draft", "list", "improve"]),
-    context: hasAny(lower, ["for ", "because", "student", "teacher", "parent", "audience", "situation", "given", "background"]),
-    constraints: hasAny(lower, ["under ", "less than", "no more", "avoid", "don't", "do not", "must", "only", "at least"]),
-    format: hasAny(lower, ["bullet", "list", "table", "paragraph", "steps", "email", "headline", "tone", "words"]),
-  };
+function buildEvaluationPrompt(task: Task, userPrompt: string): string {
+  return `You are an expert prompt engineering coach evaluating a user's prompt against a specific task. You teach prompt engineering using 5 concepts in this order: Role, Task, Context, Constraints, Output Format.
 
-  const focusMatches: Record<Concept, boolean> = {
-    Role: checks.role,
-    Task: checks.task,
-    Context: checks.context,
-    Constraints: checks.constraints,
-    "Output Format": checks.format,
-  };
-  const focusMatch = focusMatches[task.conceptFocus];
-  const coverage = Object.values(checks).filter(Boolean).length;
-  const lengthBonus = prompt.length >= 90 ? 1 : prompt.length >= 45 ? 0.5 : 0;
-  const score = Math.max(1, Math.min(10, Math.round(3 + coverage + lengthBonus + (focusMatch ? 1 : 0))));
+TASK BRIEF: ${task.brief}
+CONCEPT FOCUS FOR THIS TASK: ${task.conceptFocus}
+USER'S SUBMITTED PROMPT: ${userPrompt}
 
-  const flaws: string[] = [];
-  if (!focusMatch) {
-    const focusFlaws: Record<Concept, string> = {
-      Role: "Role: your prompt does not give the AI a point of view or expertise level to work from.",
-      Task: "Task: the requested action is still broad, so the AI may not know what a finished answer should do.",
-      Context: "Context: it is missing who the answer is for or what situation the AI should keep in mind.",
-      Constraints: "Constraints: there is no clear limit or rule for what the response should include or avoid.",
-      "Output Format": "Output Format: the prompt does not describe the shape, tone, or length of the answer.",
-    };
-    flaws.push(focusFlaws[task.conceptFocus]);
+Evaluate with primary weight on the CONCEPT FOCUS.
+
+Concept definitions:
+- Role: Did the user assign the AI a persona or expertise level?
+- Task: Is what the user wants done stated clearly?
+- Context: Did the user give enough background?
+- Constraints: Did the user specify what to avoid or limits?
+- Output Format: Did the user specify structure, length, tone, audience?
+
+Respond ONLY in this JSON structure, nothing else:
+{
+  "score": <integer 1-10>,
+  "conceptFocus": "<concept being taught>",
+  "flaws": [
+    "<specific flaw referencing actual prompt text>",
+    "<flaw #2>",
+    "<flaw #3, optional>"
+  ],
+  "improved_rewrite": "<rewritten prompt fixing flaws>"
+}
+
+Never give generic advice. Every flaw must reference something specific in the user's actual submitted prompt.`;
+}
+
+function parseGroqEvaluation(content: string, task: Task): Evaluation {
+  const cleaned = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+  const parsed = JSON.parse(cleaned) as GroqEvaluation;
+  const normalized = EvaluatePromptResponse.parse({
+    score: parsed.score,
+    conceptFocus: task.conceptFocus,
+    flaws: parsed.flaws,
+    improvedRewrite: parsed.improved_rewrite,
+    encouragement: buildEncouragement(parsed.score),
+  });
+  return normalized;
+}
+
+async function evaluateWithGroq(task: Task, userPrompt: string): Promise<Evaluation> {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not configured.");
   }
-  if (!checks.task) flaws.push("Task: add a specific action such as explain, compare, summarize, or draft.");
-  if (!checks.context) flaws.push("Context: add one detail about the audience or situation so the answer can fit.");
-  if (!checks.constraints && flaws.length < 3) flaws.push("Constraints: add a useful boundary, such as a word count or something to avoid.");
-  if (!checks.format && flaws.length < 3) flaws.push("Output Format: name the structure you want, such as bullets, steps, or a table.");
-  if (flaws.length === 0) flaws.push("This is a solid attempt. Try making one detail even more precise for a stronger result.");
 
-  const improvedRewrite = `You are a helpful ${task.category.toLowerCase()} coach. ${task.brief} The audience is a beginner who needs a practical answer. Include the important context from the task, keep the response focused, and use a clear structure with specific, easy-to-follow language.`;
-  const encouragement =
-    score >= 8
-      ? "Strong work — your prompt gives the AI enough direction to do useful work on the first try."
-      : score >= 6
-        ? "You’re on the right track. One or two more details will make your request much easier to follow."
-        : "Good first rep. Prompting is a skill built through small improvements, and you have a clear next step.";
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const systemPrompt = buildEvaluationPrompt(task, userPrompt);
 
-  return { score, flaws: flaws.slice(0, 3), improvedRewrite, encouragement };
+  try {
+    const completion = await groq.chat.completions.create({
+      model: PRIMARY_GROQ_MODEL,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [{ role: "system", content: systemPrompt }],
+    });
+    return parseGroqEvaluation(completion.choices[0]?.message?.content ?? "", task);
+  } catch (primaryError) {
+    logger.warn({ err: primaryError, model: PRIMARY_GROQ_MODEL }, "Primary Groq evaluation failed; trying fallback model");
+    const completion = await groq.chat.completions.create({
+      model: FALLBACK_GROQ_MODEL,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [{ role: "system", content: systemPrompt }],
+    });
+    return parseGroqEvaluation(completion.choices[0]?.message?.content ?? "", task);
+  }
 }
 
 const arenaRouter: IRouter = Router();
@@ -321,24 +357,32 @@ arenaRouter.get("/tasks", (_req, res): void => {
   res.json(ListTasksResponse.parse(tasks));
 });
 
-arenaRouter.post("/evaluate", (req, res): void => {
+arenaRouter.post("/evaluate", async (req, res): Promise<void> => {
   const parsed = EvaluatePromptBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Please write at least 10 characters before submitting." });
+    res.status(400).json({ error: "Please write between 10 and 1500 characters before submitting." });
     return;
   }
 
   const signedIn = isSignedIn(req);
-  if (!signedIn && req.cookies?.prompt_arena_free_used === "1") {
-    res.status(401).json({ error: "Your free rep is complete. Sign in to keep practicing." });
+  const freeAttempts = Number(req.cookies?.prompt_arena_free_attempts ?? 0);
+  if (!signedIn && freeAttempts >= 2) {
+    res.status(401).json({ error: "Your two free reps are complete. Sign in to keep practicing." });
     return;
   }
 
   const task = tasks.find((item) => item.id === parsed.data.taskId) ?? currentTask();
-  const feedback = evaluate(task, parsed.data.userPrompt);
+  let feedback: Evaluation;
+  try {
+    feedback = await evaluateWithGroq(task, parsed.data.userPrompt);
+  } catch (error) {
+    logger.error({ err: error }, "Groq evaluation failed");
+    res.status(502).json({ error: "The prompt coach is temporarily unavailable. Please try again." });
+    return;
+  }
   attempts.push({ taskId: task.id, conceptFocus: task.conceptFocus, score: feedback.score, flaws: feedback.flaws });
   if (!signedIn) {
-    res.cookie("prompt_arena_free_used", "1", {
+    res.cookie("prompt_arena_free_attempts", String(freeAttempts + 1), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

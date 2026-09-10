@@ -145,6 +145,7 @@ components:
         userPrompt:
           type: string
           minLength: 10
+          maxLength: 1500
       required: [taskId, userPrompt]
     Evaluation:
       type: object

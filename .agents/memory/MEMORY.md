@@ -1,0 +1,1 @@
+- [Groq model availability](groq-model-availability.md) — verify model IDs against Groq's live catalog; requested legacy IDs may be missing or decommissioned.

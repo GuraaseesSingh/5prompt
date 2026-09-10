@@ -1,5 +1,5 @@
 import { ArrowRight, Check, ClipboardPenLine, Lightbulb, LoaderCircle, RotateCcw, Send, Sparkles, Target, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/react';
 import { Link } from 'wouter';
@@ -13,7 +13,7 @@ import {
   useListTasks,
 } from '@workspace/api-client-react';
 import { ConceptPill, PageEyebrow, StudioFooter, StudioShell } from '@/components/studio-shell';
-import { AuthRequiredDialog } from '@/components/auth-required-dialog';
+import { AuthRequiredDialog, WelcomeAuthDialog } from '@/components/auth-required-dialog';
 
 const demoTask: Task = {
   id: 'demo-task-1',
@@ -52,9 +52,19 @@ export default function Practice() {
   const [demoScores, setDemoScores] = useState(useDemoHistory);
   const [showTip, setShowTip] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const [freeAttemptUsed, setFreeAttemptUsed] = useState(() => (
-    typeof window !== 'undefined' && window.localStorage.getItem('prompt-arena-free-attempt-used') === 'true'
-  ));
+  const [showWelcomeAuthPrompt, setShowWelcomeAuthPrompt] = useState(false);
+  const [freeAttemptCount, setFreeAttemptCount] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const savedCount = Number(window.localStorage.getItem('prompt-arena-free-attempt-count'));
+    if (Number.isFinite(savedCount)) return savedCount;
+    return window.localStorage.getItem('prompt-arena-free-attempt-used') === 'true' ? 1 : 0;
+  });
+
+  useEffect(() => {
+    if (authLoaded && !isSignedIn && window.localStorage.getItem('prompt-arena-welcome-auth-dismissed') !== 'true') {
+      setShowWelcomeAuthPrompt(true);
+    }
+  }, [authLoaded, isSignedIn]);
 
   const task = taskQuery.data ?? demoTask;
   const total = tasksQuery.data?.length ?? 5;
@@ -72,7 +82,7 @@ export default function Practice() {
   const submitPrompt = () => {
     if (prompt.trim().length < 10 || isEvaluating) return;
     if (!authLoaded) return;
-    if (freeAttemptUsed && !isSignedIn) {
+    if (freeAttemptCount >= 2 && !isSignedIn) {
       setShowAuthPrompt(true);
       return;
     }
@@ -81,10 +91,11 @@ export default function Practice() {
       { data: { taskId: task.id, userPrompt: prompt.trim() } },
       {
         onSuccess: (result) => {
-          setEvaluation(result);
+           setEvaluation(result);
            if (!isSignedIn) {
-             setFreeAttemptUsed(true);
-             window.localStorage.setItem('prompt-arena-free-attempt-used', 'true');
+             const nextFreeAttemptCount = freeAttemptCount + 1;
+             setFreeAttemptCount(nextFreeAttemptCount);
+             window.localStorage.setItem('prompt-arena-free-attempt-count', String(nextFreeAttemptCount));
            }
           const nextScores = [...demoScores, result.score].slice(-8);
           setDemoScores(nextScores);
@@ -180,14 +191,14 @@ export default function Practice() {
                     <ClipboardPenLine size={16} />
                     <span className="font-mono text-[10px] uppercase tracking-[.13em]">Your prompt</span>
                   </div>
-                  <span className="font-mono text-[10px] text-primary-foreground/45">{prompt.length}/500</span>
+                  <span className="font-mono text-[10px] text-primary-foreground/45">{prompt.length}/1500</span>
                 </div>
                 <label htmlFor="prompt-input" className="sr-only">Write your prompt</label>
                 <textarea
                   id="prompt-input"
                   data-testid="input-prompt"
                   value={prompt}
-                  maxLength={500}
+                   maxLength={1500}
                   onChange={(event) => setPrompt(event.target.value)}
                   disabled={hasSubmitted}
                   placeholder="Start with the person or role you want the answer to take…"
@@ -195,7 +206,7 @@ export default function Practice() {
                 />
                 <div className="mt-5 flex items-center justify-between gap-3 border-t border-primary-foreground/15 pt-4">
                    <span className="text-[11px] text-primary-foreground/50">
-                     {freeAttemptUsed && !isSignedIn ? 'Sign in to unlock your next rep' : prompt.trim().length < 10 && !hasSubmitted ? 'At least 10 characters to begin' : 'Ready when you are'}
+                      {freeAttemptCount >= 2 && !isSignedIn ? 'Sign in to unlock your next rep' : prompt.trim().length < 10 && !hasSubmitted ? 'At least 10 characters to begin' : 'Ready when you are'}
                    </span>
                   <button
                     type="button"
@@ -224,6 +235,13 @@ export default function Practice() {
         <StudioFooter />
       </div>
       <AuthRequiredDialog open={showAuthPrompt} onClose={() => setShowAuthPrompt(false)} />
+      <WelcomeAuthDialog
+        open={showWelcomeAuthPrompt}
+        onClose={() => {
+          setShowWelcomeAuthPrompt(false);
+          window.localStorage.setItem('prompt-arena-welcome-auth-dismissed', 'true');
+        }}
+      />
     </StudioShell>
   );
 }

@@ -53,12 +53,13 @@ export const ListTasksResponse = zod.array(ListTasksResponseItem)
  */
 
 export const evaluatePromptBodyUserPromptMin = 10;
+export const evaluatePromptBodyUserPromptMax = 1500;
 
 
 
 export const EvaluatePromptBody = zod.object({
   "taskId": zod.string().min(1),
-  "userPrompt": zod.string().min(evaluatePromptBodyUserPromptMin)
+  "userPrompt": zod.string().min(evaluatePromptBodyUserPromptMin).max(evaluatePromptBodyUserPromptMax)
 })
 
 export const evaluatePromptResponseScoreMax = 10;
