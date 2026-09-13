@@ -47857,6 +47857,7 @@ arenaRouter.post("/evaluate", async (req, res) => {
   try {
     feedback = await evaluateWithGroq(task, parsed.data.userPrompt);
   } catch (error) {
+    console.error("Groq evaluation failed:", error);
     logger2.error({ err: error }, "Groq evaluation failed");
     res.status(502).json({ error: "The prompt coach is temporarily unavailable. Please try again." });
     return;

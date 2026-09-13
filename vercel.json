@@ -2,6 +2,11 @@
   "buildCommand": "node scripts/build-vercel-api.mjs",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/prompt-arena/dist/public",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",

@@ -7,4 +7,4 @@ Vercel project creation may be unavailable through the managed connector even wh
 
 **Why:** A deployment can report READY while still being inaccessible to anonymous visitors or while its serverless functions fail because the project has no runtime environment variables.
 
-**How to apply:** When deploying this app, verify both public access and API responses after deployment. Confirm the Vercel project has the Clerk and Groq runtime variables before treating the full-stack deployment as complete.
+**How to apply:** When deploying this app, verify both public access and API responses after deployment. Confirm the Vercel project has the Clerk and Groq runtime variables, then create a fresh deployment after changing them because existing functions keep the prior environment snapshot.
