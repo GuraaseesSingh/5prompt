@@ -1,1 +1,2 @@
 - [Groq model availability](groq-model-availability.md) — verify model IDs against Groq's live catalog; requested legacy IDs may be missing or decommissioned.
+- [Vercel deployment access](vercel-deployment-access.md) — team SSO protection and empty project envs can make a READY deployment private or leave serverless APIs failing.

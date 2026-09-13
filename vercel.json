@@ -1,5 +1,5 @@
 {
-  "buildCommand": "PORT=5173 BASE_PATH=/ pnpm --filter @workspace/5prompt run build",
+  "buildCommand": "node scripts/build-vercel-api.mjs",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/prompt-arena/dist/public",
   "rewrites": [
