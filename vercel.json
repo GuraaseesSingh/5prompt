@@ -1,0 +1,15 @@
+{
+  "buildCommand": "PORT=5173 BASE_PATH=/ pnpm --filter @workspace/5prompt run build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "artifacts/prompt-arena/dist/public",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api(?:/|$)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Request } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { clerkMiddleware } from "@clerk/express";
@@ -12,7 +12,7 @@ import {
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 
-const app: Express = express();
+const app = express();
 
 app.use(
   pinoHttp({
@@ -40,7 +40,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
-  clerkMiddleware((req) => ({
+  clerkMiddleware((req: Request) => ({
     publishableKey: publishableKeyFromHost(
       getClerkProxyHost(req) ?? "",
       process.env.CLERK_PUBLISHABLE_KEY,
