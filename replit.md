@@ -42,4 +42,5 @@ _Populate as you build — sharp edges, "always run X before Y" rules._
 
 ## Pointers
 
+- Project instructions, audit, decisions and flows: `CLAUDE.md` and `docs/` (read these first)
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
