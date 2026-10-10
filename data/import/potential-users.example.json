@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "product": "5prompt",
+  "dataset": "potential_users",
+  "summary": { "rows_found": 3, "ready_to_import": 2, "needs_review": 1, "schools": 2 },
+  "users": [
+    {
+      "email": "asha.teacher@example.com",
+      "first_name": "Asha",
+      "last_name": "Verma",
+      "full_name": "Asha Verma",
+      "title": "Ms.",
+      "school": "Sample Public School, City",
+      "school_key": "samplepublicschoolcity",
+      "school_raw": "sample public school,city",
+      "role": "unknown",
+      "status": "potential_user",
+      "onboarding_status": "not_invited",
+      "source_line": 3
+    },
+    {
+      "email": "ravi.k@example.org",
+      "first_name": "Ravi",
+      "last_name": "Kumar",
+      "full_name": "Ravi Kumar",
+      "title": null,
+      "school": "Example Academy North",
+      "school_key": "exampleacademynorth",
+      "school_raw": "Example Academy North",
+      "role": "unknown",
+      "status": "potential_user",
+      "onboarding_status": "not_invited",
+      "source_line": 4
+    }
+  ],
+  "needs_review": [
+    { "source_line": 5, "full_name": "No Email Person", "email_raw": "", "school": "Example Academy North", "issue": "missing email" }
+  ]
+}

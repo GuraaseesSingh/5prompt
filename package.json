@@ -7,6 +7,7 @@
     "build:vercel": "node scripts/build-vercel-api.mjs && PORT=5173 BASE_PATH=/ pnpm --filter @workspace/5prompt run build",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
+    "test": "pnpm -r --if-present run test",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
@@ -14,6 +15,7 @@
     "@replit/connectors-sdk": "^0.4.1"
   },
   "devDependencies": {
+    "@neon/config": "^1.8.6",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }

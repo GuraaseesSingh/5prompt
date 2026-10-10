@@ -1,0 +1,4 @@
+email,first_name,last_name,created_at,legacy_user_id,completed_task_ids
+asha.student@example.com,Asha,Verma,2026-09-12T10:15:00Z,user_2abcFAKE001,role-01;role-02
+rohan.k@example.com,Rohan,Kapoor,2026-09-14T08:02:00Z,user_2abcFAKE002,
+ms.teacher@example.org,Meera,"Iyer, PhD",2026-09-20T16:45:00Z,user_2abcFAKE003,role-01

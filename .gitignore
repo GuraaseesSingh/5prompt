@@ -47,3 +47,17 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Secrets: real values live in .env (local) and the Vercel dashboard, never in git
+.env
+.env.*
+!.env.example
+
+# Real user data (students' and teachers' personal data): never commit
+data/*
+!data/import/
+data/import/*
+!data/import/*.example.csv
+!data/import/*.example.json
+!data/import/README.md
+.neon

@@ -41,10 +41,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   clerkMiddleware((req: Request) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
+    // Configured key first (see the matching comment in the frontend's App.tsx).
+    publishableKey:
+      process.env.CLERK_PUBLISHABLE_KEY ||
+      publishableKeyFromHost(getClerkProxyHost(req) ?? "", undefined),
   })),
 );
 
