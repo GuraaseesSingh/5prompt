@@ -1,7 +1,8 @@
 import { ChartNoAxesColumnIncreasing, ChevronRight, CircleHelp, Home, LogIn, LogOut, Menu, Sparkles, X } from 'lucide-react';
-import { useAuth, useClerk, useUser } from '@clerk/react';
+import { useClerk } from '@clerk/react';
 import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useAppAuth } from '@/context/app-context';
 
 type StudioShellProps = {
   children: ReactNode;
@@ -104,9 +105,8 @@ export function StudioShell({ children, completed = 0, total = 5 }: StudioShellP
 }
 
 function AccountControls({ compact = false }: { compact?: boolean }) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, user } = useAppAuth();
   const { signOut } = useClerk();
-  const { user } = useUser();
 
   if (!isLoaded) return <div className={compact ? 'size-8' : 'h-10'} aria-hidden="true" />;
 
@@ -161,7 +161,7 @@ export function StudioFooter() {
   return (
     <footer className="mx-auto flex max-w-[1040px] items-center justify-between border-t border-border/70 px-5 py-7 text-xs text-muted-foreground sm:px-8">
       <span className="font-serif text-base text-foreground/70">Keep showing up.</span>
-      <span className="font-mono text-[10px] uppercase tracking-[.13em]">5prompt · 2025</span>
+      <span className="font-mono text-[10px] uppercase tracking-[.13em]">5prompt · 2026</span>
     </footer>
   );
 }

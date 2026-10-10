@@ -1,38 +1,22 @@
 import { ArrowRight, Check, Flame, LoaderCircle, LockKeyhole, RotateCcw, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { useAuth } from '@clerk/react';
 import { Link } from 'wouter';
-import { getGetProgressQueryKey, type Checkpoint, type Progress, useGetCheckpoint, useGetProgress } from '@workspace/api-client-react';
+import { type Checkpoint, useGetCheckpoint } from '@workspace/api-client-react';
 import { ConceptPill, PageEyebrow, StudioFooter, StudioShell } from '@/components/studio-shell';
 import { AuthRequiredPanel } from '@/components/auth-required-dialog';
-
-const fallbackProgress: Progress = {
-  completed: 2,
-  total: 5,
-  averageScore: 6.8,
-  currentConcept: 'Context',
-  streak: 3,
-  scores: [5, 7, 6, 8, 7],
-};
-
-function deviceScores() {
-  if (typeof window === 'undefined') return [];
-  const value = window.localStorage.getItem('prompt-arena-scores');
-  return value ? value.split(',').map(Number).filter(Number.isFinite) : [];
-}
+import { useAppState } from '@/context/app-context';
 
 export default function ProgressPage() {
-  const { isLoaded: authLoaded, isSignedIn } = useAuth();
-  const progressQuery = useGetProgress({ query: { queryKey: getGetProgressQueryKey() } });
+  const { auth, progress: progressState } = useAppState();
   const checkpoint = useGetCheckpoint();
   const [showCheckpoint, setShowCheckpoint] = useState(false);
-  const [savedScores] = useState(deviceScores);
-  const progress = progressQuery.data ?? { ...fallbackProgress, scores: savedScores.length ? savedScores : fallbackProgress.scores };
-  const percentage = Math.round((progress.completed / Math.max(progress.total, 1)) * 100);
-  const scores = progress.scores?.slice(-7) ?? [];
-  const best = scores.length ? Math.max(...scores) : 0;
+  const progress = progressState.data;
 
-  if (authLoaded && !isSignedIn) {
+  if (!auth.isLoaded) {
+    return null;
+  }
+
+  if (!auth.isSignedIn) {
     return (
       <StudioShell>
         <div className="paper-grid min-h-[calc(100dvh-68px)] px-5 py-12 md:min-h-[100dvh] sm:px-8">
@@ -42,6 +26,28 @@ export default function ProgressPage() {
       </StudioShell>
     );
   }
+
+  if (!progress) {
+    // No made-up numbers: either we are still loading or the request failed.
+    return (
+      <StudioShell>
+        <div className="mx-auto max-w-[1040px] px-5 py-12 sm:px-8">
+          {progressState.isError ? (
+            <div className="rounded-[1.35rem] border border-border bg-card p-8 text-center" role="alert" data-testid="status-progress-error">
+              <p className="font-serif text-2xl tracking-[-.025em]">We couldn’t load your progress.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Your practice is not lost because of this message. Please try again.</p>
+              <button type="button" data-testid="button-retry-progress" onClick={progressState.refresh} className="mt-5 rounded-xl bg-primary px-4 py-3 text-xs font-extrabold text-primary-foreground">Try again</button>
+            </div>
+          ) : <ProgressSkeleton />}
+        </div>
+        <StudioFooter />
+      </StudioShell>
+    );
+  }
+
+  const percentage = Math.round((progress.completed / Math.max(progress.total, 1)) * 100);
+  const scores = progress.scores.slice(-7);
+  const best = scores.length ? Math.max(...scores) : 0;
 
   const revealCheckpoint = () => {
     setShowCheckpoint(true);
@@ -61,14 +67,6 @@ export default function ProgressPage() {
             <Link href="/" data-testid="link-progress-practice" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5"><Target size={15} /> Practice now</Link>
           </header>
 
-          {progressQuery.isError && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/50 bg-accent/15 px-4 py-3 text-xs animate-rise-in" role="status" data-testid="status-progress-demo">
-              <span>Showing your local practice snapshot while progress reconnects.</span>
-              <button type="button" data-testid="button-retry-progress" onClick={() => progressQuery.refetch()} className="font-bold underline underline-offset-4">Try again</button>
-            </div>
-          )}
-          {progressQuery.isLoading && !progressQuery.data ? <ProgressSkeleton /> : (
-            <>
               <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Tasks completed" value={`${progress.completed}/${progress.total}`} detail={`${percentage}% of this set`} icon={<Check size={16} />} accent="apricot" />
                 <StatCard label="Average score" value={progress.averageScore.toFixed(1)} detail={progress.averageScore >= 7 ? 'A strong rhythm' : 'Room to grow'} icon={<TrendingUp size={16} />} accent="lavender" />
@@ -114,10 +112,11 @@ export default function ProgressPage() {
                     {showCheckpoint ? 'Refresh checkpoint' : 'View checkpoint'}
                   </button>
                 </div>
-                {showCheckpoint && <CheckpointCard data={checkpoint.data ?? fallbackCheckpoint(progress)} />}
+                {showCheckpoint && checkpoint.data && <CheckpointCard data={checkpoint.data} />}
+                {showCheckpoint && checkpoint.isError && (
+                  <p className="mt-6 text-sm text-muted-foreground" role="alert" data-testid="text-checkpoint-error">We couldn’t build your checkpoint right now. Please try again.</p>
+                )}
               </section>
-            </>
-          )}
         </div>
         <StudioFooter />
       </div>
@@ -161,17 +160,6 @@ function CheckpointCard({ data }: { data: Checkpoint }) {
       <div><p className="text-[10px] font-bold uppercase tracking-[.13em] text-muted-foreground">Next focus</p><p className="mt-2 text-sm leading-5 text-foreground/75">{data.nextFocus}</p></div>
     </div>
   );
-}
-
-function fallbackCheckpoint(progress: Progress): Checkpoint {
-  return {
-    completed: progress.completed,
-    averageScore: progress.averageScore,
-    conceptMastered: 'Giving a request a clear role and audience.',
-    recurringWeakness: 'Adding enough context for the answer to land well.',
-    headline: 'You are learning to be more specific.',
-    nextFocus: `Practise adding context to your ${progress.currentConcept} prompts.`,
-  };
 }
 
 function ProgressSkeleton() {

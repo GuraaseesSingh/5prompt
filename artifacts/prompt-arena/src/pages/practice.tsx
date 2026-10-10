@@ -1,38 +1,18 @@
 import { ArrowRight, Check, ClipboardPenLine, Lightbulb, LoaderCircle, RotateCcw, Send, Sparkles, Target, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@clerk/react';
 import { Link } from 'wouter';
 import {
   getGetTaskQueryKey,
   getListTasksQueryKey,
   type Evaluation,
-  type Task,
   useEvaluatePrompt,
   useGetTask,
   useListTasks,
 } from '@workspace/api-client-react';
 import { ConceptPill, PageEyebrow, StudioFooter, StudioShell } from '@/components/studio-shell';
 import { AuthRequiredDialog, WelcomeAuthDialog } from '@/components/auth-required-dialog';
-
-const demoTask: Task = {
-  id: 'demo-task-1',
-  order: 1,
-  title: 'Give your role a point of view',
-  brief: 'Ask for a short explanation of why the sky changes colour at sunset, written for a curious 10-year-old.',
-  conceptFocus: 'Role',
-  category: 'Clear beginnings',
-  categoryColor: '#e49b5b',
-  tip: 'Start by naming who the response should sound like. A role gives your request a helpful point of view.',
-};
-
-const demoEvaluation: Evaluation = {
-  score: 7,
-  conceptFocus: 'Role',
-  flaws: ['The audience is clear, but the expert role could be more specific.', 'A useful length or structure would make the answer easier to follow.'],
-  improvedRewrite: 'Act as a friendly astronomy teacher. Explain why the sky changes colour at sunset to a curious 10-year-old in 4 short paragraphs, using one everyday comparison.',
-  encouragement: 'You made a clear start. One small detail about the voice will make this prompt feel much more intentional.',
-};
+import { useAppState, userScopedKey } from '@/context/app-context';
+import { getErrorMessage, getErrorStatus } from '@/lib/api-error';
 
 function useDemoHistory() {
   const saved = typeof window !== 'undefined' ? window.localStorage.getItem('prompt-arena-scores') : null;
@@ -41,14 +21,22 @@ function useDemoHistory() {
 }
 
 export default function Practice() {
-  const { isLoaded: authLoaded, isSignedIn } = useAuth();
-  const queryClient = useQueryClient();
-  const taskQuery = useGetTask({ query: { queryKey: getGetTaskQueryKey() } });
+  const { auth, progress } = useAppState();
+  // The next task is per user, so wait for Clerk to know who is signed in and key
+  // the cache by user: switching accounts can never show someone else's task.
+  const taskQuery = useGetTask({
+    query: {
+      queryKey: userScopedKey(getGetTaskQueryKey(), auth.userId),
+      enabled: auth.isLoaded,
+      refetchOnWindowFocus: false,
+    },
+  });
   const tasksQuery = useListTasks({ query: { queryKey: getListTasksQueryKey() } });
   const evaluate = useEvaluatePrompt();
   const [prompt, setPrompt] = useState('');
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [demoScores, setDemoScores] = useState(useDemoHistory);
   const [showTip, setShowTip] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -61,16 +49,21 @@ export default function Practice() {
   });
 
   useEffect(() => {
-    if (authLoaded && !isSignedIn && window.localStorage.getItem('prompt-arena-welcome-auth-dismissed') !== 'true') {
+    if (auth.isLoaded && auth.isSignedIn) {
+      setShowAuthPrompt(false);
+      setShowWelcomeAuthPrompt(false);
+    }
+    if (auth.isLoaded && !auth.isSignedIn && window.localStorage.getItem('prompt-arena-welcome-auth-dismissed') !== 'true') {
       setShowWelcomeAuthPrompt(true);
     }
-  }, [authLoaded, isSignedIn]);
+  }, [auth.isLoaded, auth.isSignedIn]);
 
-  const task = taskQuery.data ?? demoTask;
+  const task = taskQuery.data;
   const total = tasksQuery.data?.length ?? 5;
-  const completed = Math.max(0, (task.order ?? 1) - 1);
-  const isLoading = taskQuery.isLoading && !taskQuery.data;
+  const completed = task ? Math.max(0, task.order - 1) : 0;
+  const isLoading = !task && !taskQuery.isError;
   const isEvaluating = evaluate.isPending;
+  const guestLimitApplies = auth.isLoaded && !auth.isSignedIn;
 
   const scoreTone = useMemo(() => {
     if (!evaluation) return '';
@@ -80,19 +73,20 @@ export default function Practice() {
   }, [evaluation]);
 
   const submitPrompt = () => {
-    if (prompt.trim().length < 10 || isEvaluating) return;
-    if (!authLoaded) return;
-    if (freeAttemptCount >= 2 && !isSignedIn) {
+    if (!task || prompt.trim().length < 10 || isEvaluating) return;
+    if (!auth.isLoaded) return;
+    if (freeAttemptCount >= 2 && guestLimitApplies) {
       setShowAuthPrompt(true);
       return;
     }
     setHasSubmitted(true);
+    setSubmitError(null);
     evaluate.mutate(
       { data: { taskId: task.id, userPrompt: prompt.trim() } },
       {
         onSuccess: (result) => {
            setEvaluation(result);
-           if (!isSignedIn) {
+            if (!auth.isSignedIn) {
              const nextFreeAttemptCount = freeAttemptCount + 1;
              setFreeAttemptCount(nextFreeAttemptCount);
              window.localStorage.setItem('prompt-arena-free-attempt-count', String(nextFreeAttemptCount));
@@ -100,18 +94,24 @@ export default function Practice() {
           const nextScores = [...demoScores, result.score].slice(-8);
           setDemoScores(nextScores);
           window.localStorage.setItem('prompt-arena-scores', nextScores.join(','));
-          queryClient.invalidateQueries({ queryKey: getGetTaskQueryKey() });
+          // Don't refetch the task yet: the card must keep showing the task this
+          // feedback is about. "Try the next rep" (nextTask) loads the next one.
+          if (auth.isSignedIn) progress.refresh();
         },
         onError: (error) => {
-          if ((error as { status?: number }).status === 401) {
-            setHasSubmitted(false);
+          // Let the user edit and resubmit. Never show a made-up evaluation:
+          // a fake score would teach the wrong lesson and hide real outages.
+          setHasSubmitted(false);
+          if (getErrorStatus(error) === 401 && !auth.isSignedIn) {
             setShowAuthPrompt(true);
             return;
           }
-          setEvaluation(demoEvaluation);
-          const nextScores = [...demoScores, demoEvaluation.score].slice(-8);
-          setDemoScores(nextScores);
-          window.localStorage.setItem('prompt-arena-scores', nextScores.join(','));
+          if (getErrorStatus(error) === 401) {
+            // Signed in on this page but the server did not recognise the session (Bug A).
+            setSubmitError('We could not confirm your sign-in. Please try again, or sign out and back in.');
+            return;
+          }
+          setSubmitError(getErrorMessage(error, 'The prompt coach is unavailable right now. Your prompt is still here — please try again.'));
         },
       },
     );
@@ -121,6 +121,7 @@ export default function Practice() {
     setPrompt('');
     setEvaluation(null);
     setHasSubmitted(false);
+    setSubmitError(null);
     setShowTip(false);
     taskQuery.refetch();
   };
@@ -149,14 +150,13 @@ export default function Practice() {
             ))}
             <span className="ml-2 font-mono text-[10px] text-muted-foreground">{completed}/{total}</span>
           </div>
-          {taskQuery.isError && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/50 bg-accent/15 px-4 py-3 text-xs text-foreground animate-rise-in" role="status" data-testid="status-task-demo">
-              <span>We’re using a practice example while your next task reconnects.</span>
-              <button type="button" data-testid="button-retry-task" onClick={() => taskQuery.refetch()} className="font-bold underline underline-offset-4">Try again</button>
+          {isLoading ? <TaskSkeleton /> : !task ? (
+            <div className="rounded-[1.35rem] border border-border bg-card p-8 text-center animate-rise-in" role="alert" data-testid="status-task-error">
+              <p className="font-serif text-2xl tracking-[-.025em]">We couldn’t load your task.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Check your connection, then try again.</p>
+              <button type="button" data-testid="button-retry-task" onClick={() => taskQuery.refetch()} className="mt-5 rounded-xl bg-primary px-4 py-3 text-xs font-extrabold text-primary-foreground">Try again</button>
             </div>
-          )}
-
-          {isLoading ? <TaskSkeleton /> : (
+          ) : (
             <section className="grid gap-5 lg:grid-cols-[1.04fr_.96fr]">
               <article className="animate-rise-in rounded-[1.35rem] border border-border bg-card p-6 shadow-[0_12px_35px_hsl(var(--foreground)/.05)] sm:p-8">
                 <div className="flex items-start justify-between gap-4">
@@ -206,7 +206,7 @@ export default function Practice() {
                 />
                 <div className="mt-5 flex items-center justify-between gap-3 border-t border-primary-foreground/15 pt-4">
                    <span className="text-[11px] text-primary-foreground/50">
-                      {freeAttemptCount >= 2 && !isSignedIn ? 'Sign in to unlock your next rep' : prompt.trim().length < 10 && !hasSubmitted ? 'At least 10 characters to begin' : 'Ready when you are'}
+                      {guestLimitApplies && freeAttemptCount >= 2 ? 'Sign in to unlock your next rep' : prompt.trim().length < 10 && !hasSubmitted ? 'At least 10 characters to begin' : 'Ready when you are'}
                    </span>
                   <button
                     type="button"
@@ -219,6 +219,9 @@ export default function Practice() {
                     {isEvaluating ? 'Reading it…' : 'Get feedback'}
                   </button>
                 </div>
+                {submitError && (
+                  <p className="mt-3 rounded-lg bg-primary-foreground/10 px-3 py-2 text-xs text-primary-foreground" role="alert" data-testid="text-submit-error">{submitError}</p>
+                )}
               </article>
             </section>
           )}
@@ -268,9 +271,13 @@ function FeedbackCard({ evaluation, tone, onNext }: { evaluation: Evaluation; to
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <div>
               <p className="mb-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">Next time, try</p>
-              <ul className="space-y-2.5">
-                {evaluation.flaws.map((flaw, index) => <li key={index} className="flex gap-2 text-xs leading-5 text-muted-foreground" data-testid={`text-feedback-flaw-${index}`}><X size={14} className="mt-0.5 shrink-0 text-destructive" />{flaw}</li>)}
-              </ul>
+              {evaluation.flaws.length === 0 ? (
+                <p className="text-xs leading-5 text-muted-foreground" data-testid="text-no-flaws">No major gaps. This prompt already covers the concept well.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {evaluation.flaws.map((flaw, index) => <li key={index} className="flex gap-2 text-xs leading-5 text-muted-foreground" data-testid={`text-feedback-flaw-${index}`}><X size={14} className="mt-0.5 shrink-0 text-destructive" />{flaw}</li>)}
+                </ul>
+              )}
             </div>
             <div className="rounded-xl border border-border bg-background p-4">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">A stronger version</p>

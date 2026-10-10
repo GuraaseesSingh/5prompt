@@ -34,7 +34,7 @@ export function AuthRequiredDialog({ open, onClose }: AuthRequiredDialogProps) {
         </div>
         <div className="px-6 py-6">
           <p className="text-sm leading-6 text-muted-foreground">
-            Your first prompt was free. Create an account or log in to unlock the next task and keep your scores across sessions.
+            Your two free reps are done. Create an account or log in to unlock the next task and keep your progress across sessions and devices.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Link href="/sign-in" onClick={onClose} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-xs font-extrabold text-foreground transition-transform hover:-translate-y-0.5">
@@ -59,7 +59,7 @@ export function AuthRequiredPanel() {
       </span>
       <p className="mt-6 font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">Your practice log</p>
       <h1 className="mt-3 font-serif text-4xl tracking-[-.045em]">Sign in to see your progress.</h1>
-      <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-muted-foreground">Your first rep is free. Log in or create an account to unlock the full studio and keep your scores safe.</p>
+      <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-muted-foreground">Your first two reps are free. Log in or create an account to unlock the full studio and keep your progress safe.</p>
       <div className="mt-7 flex flex-wrap justify-center gap-3">
         <Link href="/sign-in" className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-xs font-extrabold text-foreground">Log in <ArrowRight size={14} /></Link>
         <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-extrabold text-primary-foreground">Create account <ArrowRight size={14} /></Link>

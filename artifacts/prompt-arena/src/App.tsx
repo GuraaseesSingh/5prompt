@@ -6,6 +6,7 @@ import { shadcn } from '@clerk/themes';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { AppStateProvider } from '@/context/app-context';
 import NotFound from '@/pages/not-found';
 import Practice from '@/pages/practice';
 import ProgressPage from '@/pages/progress';
@@ -18,10 +19,13 @@ import {
 } from 'wouter';
 
 const queryClient = new QueryClient();
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
+// Use the configured key as-is (pk_test_ for development, pk_live_ for production).
+// Deriving it from the hostname only works when the site runs on the exact domain
+// registered in Clerk; on *.vercel.app or www. it would point at a non-existent
+// Clerk endpoint. The host-derived key is only a fallback when none is configured.
+const clerkPubKey =
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
+  publishableKeyFromHost(window.location.hostname, undefined);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -131,7 +135,9 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
-        <Router />
+        <AppStateProvider>
+          <Router />
+        </AppStateProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

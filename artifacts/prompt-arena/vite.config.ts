@@ -60,6 +60,8 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   root: path.resolve(import.meta.dirname),
+  // Read VITE_* variables from the repo-root .env (one env file for the whole repo).
+  envDir: path.resolve(import.meta.dirname, '..', '..'),
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
@@ -71,6 +73,10 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    // Local dev only: forward /api to the API server (Replit and Vercel route it themselves).
+    proxy: {
+      '/api': `http://localhost:${process.env.API_PORT ?? 8080}`,
     },
   },
   preview: {
