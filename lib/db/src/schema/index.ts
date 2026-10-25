@@ -14,6 +14,8 @@ export const appUsers = pgTable("app_users", {
   email: text("email").unique(),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  // Chosen during onboarding (one of PROFILE_ROLES). Null = onboarding not finished.
+  role: text("role"),
   // School or organisation, when known (e.g. from the potential-users list).
   school: text("school"),
   // "signup" = created on first sign-in, "replit_import" = imported from the old app,

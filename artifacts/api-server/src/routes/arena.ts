@@ -4,9 +4,12 @@ import {
   EvaluatePromptBody,
   EvaluatePromptResponse,
   GetCheckpointResponse,
+  GetProfileResponse,
   GetProgressResponse,
   GetTaskResponse,
   ListTasksResponse,
+  UpdateProfileBody,
+  UpdateProfileResponse,
   type Evaluation,
 } from "@workspace/api-zod";
 import {
@@ -15,6 +18,7 @@ import {
   getDb,
   listAttempts,
   recordAttempt,
+  updateAppUserProfile,
   type AppUser,
   type ClerkProfile,
   type Database,
@@ -61,6 +65,16 @@ export const defaultArenaDeps: ArenaDeps = {
   timeZone: process.env.APP_TIMEZONE || "UTC",
   dailyLimit: Number(process.env.EVALUATIONS_PER_USER_PER_DAY) || 40,
 };
+
+/** The fields the client may see. Never send clerkUserId or internal IDs. */
+function toProfile(user: AppUser) {
+  return {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role,
+  };
+}
 
 function guestAttemptsUsed(req: Request): number {
   const value = Number(req.cookies?.[GUEST_ATTEMPTS_COOKIE] ?? 0);
@@ -178,6 +192,31 @@ export function createArenaRouter(deps: ArenaDeps = defaultArenaDeps): IRouter {
     const history = await listAttempts(deps.db(), user.id);
     res.set("Cache-Control", "no-store");
     res.json(GetProgressResponse.parse(buildProgress(history, deps.now(), deps.timeZone)));
+  });
+
+  // Name and role from onboarding. Role is null until the user picks one.
+  router.get("/profile", async (req, res): Promise<void> => {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    res.set("Cache-Control", "no-store");
+    res.json(GetProfileResponse.parse(toProfile(user)));
+  });
+
+  router.put("/profile", async (req, res): Promise<void> => {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const parsed = UpdateProfileBody.safeParse(req.body);
+    // minLength 1 accepts "   ", so check the trimmed name too.
+    if (!parsed.success || parsed.data.firstName.trim() === "") {
+      res.status(400).json({ error: "Please enter your name and choose a role." });
+      return;
+    }
+    const updated = await updateAppUserProfile(deps.db(), user.id, {
+      firstName: parsed.data.firstName.trim(),
+      lastName: parsed.data.lastName?.trim() || null,
+      role: parsed.data.role,
+    });
+    res.json(UpdateProfileResponse.parse(toProfile(updated)));
   });
 
   router.post("/checkpoint", async (req, res): Promise<void> => {

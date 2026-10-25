@@ -89,3 +89,22 @@ export async function countAttemptsSince(db: Database, userId: string, since: Da
     .where(and(eq(attempts.userId, userId), eq(attempts.source, "evaluation"), gte(attempts.createdAt, since)));
   return row?.value ?? 0;
 }
+
+export type ProfileUpdateInput = {
+  firstName: string;
+  lastName: string | null;
+  role: string;
+};
+
+/** Saves the name and role chosen during onboarding and returns the updated row. */
+export async function updateAppUserProfile(db: Database, userId: string, input: ProfileUpdateInput): Promise<AppUser> {
+  const [updated] = await db
+    .update(appUsers)
+    .set({ firstName: input.firstName, lastName: input.lastName, role: input.role, updatedAt: new Date() })
+    .where(eq(appUsers.id, userId))
+    .returning();
+  if (!updated) {
+    throw new Error("Could not save the profile: app user not found.");
+  }
+  return updated;
+}

@@ -9,6 +9,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppStateProvider } from '@/context/app-context';
 import NotFound from '@/pages/not-found';
 import Practice from '@/pages/practice';
+import { RequireOnboarding } from '@/components/require-onboarding';
+import Onboarding from '@/pages/onboarding';
 import ProgressPage from '@/pages/progress';
 import Welcome from '@/pages/welcome';
 import {
@@ -41,8 +43,9 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/" component={Practice} />
-        <Route path="/progress" component={ProgressPage} />
+        <Route path="/">{() => <RequireOnboarding><Practice /></RequireOnboarding>}</Route>
+        <Route path="/progress">{() => <RequireOnboarding><ProgressPage /></RequireOnboarding>}</Route>
+        <Route path="/onboarding" component={Onboarding} />
         <Route path="/welcome" component={Welcome} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />

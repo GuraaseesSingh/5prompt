@@ -88,6 +88,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Progress"
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [arena]
+      summary: Get the signed-in user's name and role
+      responses:
+        "200":
+          description: Profile (role is null until onboarding is finished)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateProfile
+      tags: [arena]
+      summary: Save the signed-in user's name and role (onboarding)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Saved profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          description: Invalid name or role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /checkpoint:
     post:
       operationId: getCheckpoint
@@ -213,3 +260,34 @@ components:
           type: string
       required: [error]
 
+    Profile:
+      type: object
+      properties:
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+          enum: [student, teacher, developer, designer, researcher, analyst, marketer, writer, other]
+      required: [firstName, lastName, email, role]
+    ProfileUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 60
+        lastName:
+          type: string
+          maxLength: 60
+        role:
+          type: string
+          enum: [student, teacher, developer, designer, researcher, analyst, marketer, writer, other]
+      required: [firstName, role]

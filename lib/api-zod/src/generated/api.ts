@@ -89,6 +89,40 @@ export const GetProgressResponse = zod.object({
 
 
 /**
+ * @summary Get the signed-in user's name and role
+ */
+export const GetProfileResponse = zod.object({
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "role": zod.enum(['student', 'teacher', 'developer', 'designer', 'researcher', 'analyst', 'marketer', 'writer', 'other']).nullable()
+})
+
+
+/**
+ * @summary Save the signed-in user's name and role (onboarding)
+ */
+export const updateProfileBodyFirstNameMax = 60;
+
+export const updateProfileBodyLastNameMax = 60;
+
+
+
+export const UpdateProfileBody = zod.object({
+  "firstName": zod.string().min(1).max(updateProfileBodyFirstNameMax),
+  "lastName": zod.string().max(updateProfileBodyLastNameMax).optional(),
+  "role": zod.enum(['student', 'teacher', 'developer', 'designer', 'researcher', 'analyst', 'marketer', 'writer', 'other'])
+})
+
+export const UpdateProfileResponse = zod.object({
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "role": zod.enum(['student', 'teacher', 'developer', 'designer', 'researcher', 'analyst', 'marketer', 'writer', 'other']).nullable()
+})
+
+
+/**
  * @summary Get a five-task checkpoint summary
  */
 export const GetCheckpointBody = zod.object({

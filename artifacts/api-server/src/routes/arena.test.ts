@@ -114,7 +114,9 @@ describe("progress persists per user (Bug C)", () => {
       getUserId: () => "alice",
       loadClerkProfile: async () => ({ email: null, emailVerified: false, firstName: null, lastName: null }),
       evaluate,
-      now: () => NOW,
+      // Attempts get the database's real clock (defaultNow), so the streak must be
+      // measured from the real clock too, not the fixed NOW used by the other tests.
+      now: () => new Date(),
       timeZone: "UTC",
       dailyLimit: 3,
     }));
@@ -208,5 +210,47 @@ describe("evaluation errors are honest", () => {
     const res = await submit("role-04", { user: "alice" });
     expect(res.status).toBe(429);
     expect(evaluate).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("onboarding profile (name and role)", () => {
+  function putProfile(body: unknown, options?: Options) {
+    return fetch(`${baseUrl}/profile`, { method: "PUT", headers: headers(options), body: JSON.stringify(body) });
+  }
+  async function getProfile(options?: Options) {
+    const res = await fetch(`${baseUrl}/profile`, { headers: headers(options) });
+    return { status: res.status, body: (await res.json()) as Record<string, unknown> };
+  }
+
+  it("asks a new signed-in user to finish onboarding (role is null)", async () => {
+    const { status, body } = await getProfile({ user: "carol" });
+    expect(status).toBe(200);
+    expect(body.role).toBeNull();
+  });
+
+  it("saves the name and role, and returns them on the next read", async () => {
+    const saved = await putProfile({ firstName: "  Carol ", lastName: "Doe", role: "teacher" }, { user: "carol" });
+    expect(saved.status).toBe(200);
+    const body = (await saved.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({ firstName: "Carol", lastName: "Doe", role: "teacher" });
+
+    const again = await getProfile({ user: "carol" });
+    expect(again.body).toMatchObject({ firstName: "Carol", lastName: "Doe", role: "teacher" });
+  });
+
+  it("rejects a role outside the list, even when the request is hand-made", async () => {
+    const res = await putProfile({ firstName: "Carol", role: "astronaut" }, { user: "carol" });
+    expect(res.status).toBe(400);
+    expect((await getProfile({ user: "carol" })).body.role).toBeNull();
+  });
+
+  it("rejects an empty name", async () => {
+    const res = await putProfile({ firstName: "   ", role: "student" }, { user: "carol" });
+    expect(res.status).toBe(400);
+  });
+
+  it("requires sign-in", async () => {
+    expect((await getProfile()).status).toBe(401);
+    expect((await putProfile({ firstName: "Carol", role: "student" })).status).toBe(401);
   });
 });

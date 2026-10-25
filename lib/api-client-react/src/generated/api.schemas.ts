@@ -101,3 +101,51 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type ProfileRole = typeof ProfileRole[keyof typeof ProfileRole] | null;
+
+
+export const ProfileRole = {
+  student: 'student',
+  teacher: 'teacher',
+  developer: 'developer',
+  designer: 'designer',
+  researcher: 'researcher',
+  analyst: 'analyst',
+  marketer: 'marketer',
+  writer: 'writer',
+  other: 'other',
+} as const;
+
+export interface Profile {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  role: ProfileRole;
+}
+
+export type ProfileUpdateRole = typeof ProfileUpdateRole[keyof typeof ProfileUpdateRole];
+
+
+export const ProfileUpdateRole = {
+  student: 'student',
+  teacher: 'teacher',
+  developer: 'developer',
+  designer: 'designer',
+  researcher: 'researcher',
+  analyst: 'analyst',
+  marketer: 'marketer',
+  writer: 'writer',
+  other: 'other',
+} as const;
+
+export interface ProfileUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  firstName: string;
+  /** @maxLength 60 */
+  lastName?: string;
+  role: ProfileUpdateRole;
+}
+
