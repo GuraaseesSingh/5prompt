@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/build-vercel-api.mjs",
+  "buildCommand": "pnpm run build:vercel",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/prompt-arena/dist/public",
   "functions": {
